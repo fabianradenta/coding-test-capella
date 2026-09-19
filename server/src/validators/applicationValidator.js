@@ -57,6 +57,10 @@ const updateApplicationSchema = createApplicationSchema.omit({
   name: true,
 });
 
+const applicationStatusSchema = z.object({
+  status: z.enum(['APPROVED', 'REJECTED'], { error: 'Status tidak valid' }),
+});
+
 function parse(schema, body) {
   const result = schema.safeParse(body);
   if (result.success) {
@@ -92,4 +96,8 @@ export function parseApplicationFilters(query) {
     }
   }
   return parse(applicationFiltersSchema, provided);
+}
+
+export function parseApplicationStatus(body) {
+  return parse(applicationStatusSchema, body);
 }

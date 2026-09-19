@@ -152,6 +152,19 @@ export async function update(id, application, db = pool) {
   return mapApplicationWithCustomer(rows[0]);
 }
 
+export async function updateStatus(id, status, db = pool) {
+  const { rows } = await db.query(
+    `WITH updated AS (
+       UPDATE applications SET status = $2 WHERE id = $1 RETURNING *
+     )
+     SELECT u.*, c.name AS customer_name, c.identity_number
+     FROM updated u
+     JOIN customers c ON c.id = u.customer_id`,
+    [id, status],
+  );
+  return mapApplicationWithCustomer(rows[0]);
+}
+
 export async function countActiveByCustomerId(customerId, db = pool) {
   const { rows } = await db.query(
     `SELECT count(*)::int AS count

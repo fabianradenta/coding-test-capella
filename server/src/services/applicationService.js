@@ -142,6 +142,21 @@ export async function getApplicationDetail(id) {
   };
 }
 
+// Locks the row so that an edit and a decision running in parallel cannot both
+// see the application as still pending.
+async function loadPendingForUpdate(id, client) {
+  const existing = await applicationRepository.findByIdForUpdate(id, client);
+  if (!existing) {
+    throw new NotFoundError('Pengajuan tidak ditemukan');
+  }
+  if (existing.status !== 'PENDING') {
+    throw new ConflictError(
+      'Pengajuan yang sudah diputuskan tidak dapat diubah',
+    );
+  }
+  return existing;
+}
+
 export async function updateApplication(id, input) {
   if (!UUID_PATTERN.test(id)) {
     throw new NotFoundError('Pengajuan tidak ditemukan');
@@ -150,16 +165,7 @@ export async function updateApplication(id, input) {
   assertFinancingLimits(input);
 
   return withTransaction(async (client) => {
-    // Locked so that a decision taken in parallel cannot slip in between the check and the update.
-    const existing = await applicationRepository.findByIdForUpdate(id, client);
-    if (!existing) {
-      throw new NotFoundError('Pengajuan tidak ditemukan');
-    }
-    if (existing.status !== 'PENDING') {
-      throw new ConflictError(
-        'Pengajuan yang sudah diputuskan tidak dapat diubah',
-      );
-    }
+    await loadPendingForUpdate(id, client);
 
     return applicationRepository.update(
       id,
@@ -173,5 +179,16 @@ export async function updateApplication(id, input) {
       },
       client,
     );
+  });
+}
+
+export async function decideApplication(id, status) {
+  if (!UUID_PATTERN.test(id)) {
+    throw new NotFoundError('Pengajuan tidak ditemukan');
+  }
+
+  return withTransaction(async (client) => {
+    await loadPendingForUpdate(id, client);
+    return applicationRepository.updateStatus(id, status, client);
   });
 }

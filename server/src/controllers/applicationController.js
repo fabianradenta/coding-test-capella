@@ -1,6 +1,7 @@
 import * as applicationService from '../services/applicationService.js';
 import {
   parseApplicationFilters,
+  parseApplicationStatus,
   parseCreateApplication,
   parseUpdateApplication,
 } from '../validators/applicationValidator.js';
@@ -27,6 +28,15 @@ export async function updateApplication(req, res) {
   const application = await applicationService.updateApplication(
     req.params.id,
     input,
+  );
+  res.json(application);
+}
+
+export async function decideApplication(req, res) {
+  const { status } = parseApplicationStatus(req.body);
+  const application = await applicationService.decideApplication(
+    req.params.id,
+    status,
   );
   res.json(application);
 }
