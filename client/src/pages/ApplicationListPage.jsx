@@ -1,7 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Alert } from '../components/Alert.jsx';
 import { Button } from '../components/Button.jsx';
+import { Toast } from '../components/Toast.jsx';
+import { ApplicationFormModal } from '../features/applications/ApplicationFormModal.jsx';
 import { ApplicationFilters } from '../features/applications/ApplicationFilters.jsx';
 import { ApplicationsTable } from '../features/applications/ApplicationsTable.jsx';
 import { useApplications } from '../features/applications/useApplications.js';
@@ -18,6 +20,8 @@ export function ApplicationListPage() {
   };
 
   const { data, error, isLoading, reload } = useApplications(filters);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [toast, setToast] = useState(null);
 
   // Filters live in the URL so that going to a detail page and back keeps them.
   const changeFilter = useCallback(
@@ -45,11 +49,18 @@ export function ApplicationListPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Daftar Pengajuan</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Pengajuan terbaru ditampilkan paling atas.
-        </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">
+            Daftar Pengajuan
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Pengajuan terbaru ditampilkan paling atas.
+          </p>
+        </div>
+        <Button variant="primary" onClick={() => setIsFormOpen(true)}>
+          Tambah Pengajuan
+        </Button>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white">
@@ -96,7 +107,15 @@ export function ApplicationListPage() {
                   <Button className="mx-auto mt-4" onClick={resetFilters}>
                     Reset filter
                   </Button>
-                ) : null}
+                ) : (
+                  <Button
+                    variant="primary"
+                    className="mx-auto mt-4"
+                    onClick={() => setIsFormOpen(true)}
+                  >
+                    Tambah Pengajuan
+                  </Button>
+                )}
               </div>
             )}
 
@@ -106,6 +125,17 @@ export function ApplicationListPage() {
           </div>
         ) : null}
       </div>
+
+      <ApplicationFormModal
+        open={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSaved={(application) => {
+          setToast(`Pengajuan ${application.customerName} berhasil dibuat`);
+          reload();
+        }}
+      />
+
+      {toast ? <Toast message={toast} onClose={() => setToast(null)} /> : null}
     </div>
   );
 }
