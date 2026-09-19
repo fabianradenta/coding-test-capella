@@ -165,14 +165,16 @@ export async function updateStatus(id, status, db = pool) {
   return mapApplicationWithCustomer(rows[0]);
 }
 
-export async function countActiveByCustomerId(customerId, db = pool) {
+export async function countStatusesByCustomerId(customerId, db = pool) {
   const { rows } = await db.query(
-    `SELECT count(*)::int AS count
+    `SELECT
+       count(*) FILTER (WHERE status IN ('PENDING', 'APPROVED'))::int AS active,
+       count(*) FILTER (WHERE status = 'REJECTED')::int AS rejected
      FROM applications
-     WHERE customer_id = $1 AND status IN ('PENDING', 'APPROVED')`,
+     WHERE customer_id = $1`,
     [customerId],
   );
-  return rows[0].count;
+  return rows[0];
 }
 
 export async function insert(application, db = pool) {

@@ -73,11 +73,11 @@ export async function createApplication(input) {
   return withTransaction(async (client) => {
     const customer = await lockOrCreateCustomer(client, input);
 
-    const activeCount = await applicationRepository.countActiveByCustomerId(
+    const { active } = await applicationRepository.countStatusesByCustomerId(
       customer.id,
       client,
     );
-    if (activeCount >= QUOTA_LIMIT) {
+    if (active >= QUOTA_LIMIT) {
       throw new BusinessRuleError(
         'Nasabah telah mencapai batas maksimal 3 pengajuan',
       );

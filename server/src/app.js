@@ -1,6 +1,7 @@
 import express from 'express';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 import { applicationsRouter } from './routes/applications.js';
+import { customersRouter } from './routes/customers.js';
 
 export function createApp() {
   const app = express();
@@ -12,6 +13,7 @@ export function createApp() {
   });
 
   app.use('/api/applications', applicationsRouter);
+  app.use('/api/customers', customersRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

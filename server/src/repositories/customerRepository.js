@@ -9,6 +9,14 @@ function mapCustomer(row) {
   };
 }
 
+export async function findByIdentityNumber(identityNumber, db = pool) {
+  const { rows } = await db.query(
+    'SELECT * FROM customers WHERE identity_number = $1',
+    [identityNumber],
+  );
+  return rows[0] ? mapCustomer(rows[0]) : null;
+}
+
 export async function findByIdentityNumberForUpdate(identityNumber, db = pool) {
   const { rows } = await db.query(
     'SELECT * FROM customers WHERE identity_number = $1 FOR UPDATE',
