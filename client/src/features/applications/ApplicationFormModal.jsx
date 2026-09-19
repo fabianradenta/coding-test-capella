@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { createApplication } from '../../api/applications.js';
+import {
+  createApplication,
+  updateApplication,
+} from '../../api/applications.js';
 import { getCustomer } from '../../api/customers.js';
 import { Alert } from '../../components/Alert.jsx';
 import { Button } from '../../components/Button.jsx';
@@ -31,8 +34,24 @@ const EMPTY_VALUES = {
   notes: '',
 };
 
-export function ApplicationFormModal({ open, onClose, onSaved }) {
-  const [values, setValues] = useState(EMPTY_VALUES);
+function valuesOf(application) {
+  return {
+    identityNumber: application.identityNumber,
+    name: application.customerName,
+    monthlyIncome: String(application.monthlyIncome),
+    applicationType: application.applicationType,
+    requestedAmount: String(application.requestedAmount),
+    tenor: String(application.tenor),
+    notes: application.notes,
+  };
+}
+
+// Mounted only while it is open, so every opening starts from a clean state.
+export function ApplicationFormModal({ application = null, onClose, onSaved }) {
+  const isEdit = Boolean(application);
+  const [values, setValues] = useState(() =>
+    application ? valuesOf(application) : EMPTY_VALUES,
+  );
   const [fieldErrors, setFieldErrors] = useState({});
   const [ruleError, setRuleError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -41,7 +60,8 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
   const { identityNumber } = values;
 
   useEffect(() => {
-    if (identityNumber.length !== IDENTITY_LENGTH) {
+    // Editing cannot change the customer, so there is nothing to look up.
+    if (isEdit || identityNumber.length !== IDENTITY_LENGTH) {
       setLookup({ state: 'idle' });
       return undefined;
     }
@@ -69,7 +89,7 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
       });
 
     return () => controller.abort();
-  }, [identityNumber]);
+  }, [identityNumber, isEdit]);
 
   function setIdentityNumber(value) {
     setValues((current) => ({
@@ -88,14 +108,6 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
     setRuleError(null);
   }
 
-  function close() {
-    setValues(EMPTY_VALUES);
-    setFieldErrors({});
-    setRuleError(null);
-    setLookup({ state: 'idle' });
-    onClose();
-  }
-
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -103,7 +115,7 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
       return;
     }
 
-    const errors = validateFields(values);
+    const errors = validateFields(values, { requireCustomer: !isEdit });
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       setRuleError(null);
@@ -117,19 +129,24 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
       return;
     }
 
+    const financing = {
+      applicationType: values.applicationType,
+      requestedAmount: toNumber(values.requestedAmount),
+      tenor: toNumber(values.tenor),
+      monthlyIncome: toNumber(values.monthlyIncome),
+      notes: values.notes.trim(),
+    };
+
     setIsSaving(true);
     try {
-      const application = await createApplication({
-        identityNumber: values.identityNumber.trim(),
-        name: values.name.trim(),
-        applicationType: values.applicationType,
-        requestedAmount: toNumber(values.requestedAmount),
-        tenor: toNumber(values.tenor),
-        monthlyIncome: toNumber(values.monthlyIncome),
-        notes: values.notes.trim(),
-      });
-      close();
-      onSaved(application);
+      const saved = isEdit
+        ? await updateApplication(application.id, financing)
+        : await createApplication({
+            identityNumber: values.identityNumber.trim(),
+            name: values.name.trim(),
+            ...financing,
+          });
+      onSaved(saved);
     } catch (err) {
       setFieldErrors(err.fields ?? {});
       setRuleError(err.fields ? null : { message: err.message });
@@ -153,8 +170,8 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
 
   return (
     <Modal
-      open={open}
-      onClose={close}
+      open
+      onClose={onClose}
       labelledBy="form-pengajuan-judul"
       className="max-w-2xl"
     >
@@ -165,15 +182,17 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
               id="form-pengajuan-judul"
               className="text-lg font-semibold text-slate-900"
             >
-              Tambah Pengajuan
+              {isEdit ? 'Edit Pengajuan' : 'Tambah Pengajuan'}
             </h2>
             <p className="mt-0.5 text-sm text-slate-600">
-              Isi nomor identitas terlebih dahulu untuk mengecek data nasabah.
+              {isEdit
+                ? 'Data nasabah tidak dapat diubah dari halaman ini.'
+                : 'Isi nomor identitas terlebih dahulu untuk mengecek data nasabah.'}
             </p>
           </div>
           <button
             type="button"
-            onClick={close}
+            onClick={onClose}
             aria-label="Tutup form"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800"
           >
@@ -227,6 +246,7 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
                       digitsOnly(event.target.value, IDENTITY_LENGTH),
                     )
                   }
+                  readOnly={isEdit}
                   aria-invalid={Boolean(fieldErrors.identityNumber)}
                   aria-describedby={
                     fieldErrors.identityNumber
@@ -235,7 +255,9 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
                   }
                   className={inputClassName(
                     Boolean(fieldErrors.identityNumber),
-                    'tabular-nums',
+                    isEdit
+                      ? 'bg-slate-100 text-slate-600 tabular-nums'
+                      : 'tabular-nums',
                   )}
                 />
               </FormField>
@@ -249,12 +271,12 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
                   id="name"
                   value={values.name}
                   onChange={(event) => setField('name', event.target.value)}
-                  readOnly={Boolean(existingCustomer)}
+                  readOnly={isEdit || Boolean(existingCustomer)}
                   aria-invalid={Boolean(fieldErrors.name)}
                   aria-describedby={fieldErrors.name ? 'name-error' : undefined}
                   className={inputClassName(
                     Boolean(fieldErrors.name),
-                    existingCustomer
+                    isEdit || existingCustomer
                       ? 'bg-slate-100 text-slate-600'
                       : undefined,
                   )}
@@ -439,7 +461,7 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
         </div>
 
         <footer className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
-          <Button onClick={close} disabled={isSaving}>
+          <Button onClick={onClose} disabled={isSaving}>
             Batal
           </Button>
           <Button
@@ -448,7 +470,7 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
             loading={isSaving}
             disabled={isQuotaFull}
           >
-            Simpan Pengajuan
+            {isEdit ? 'Simpan Perubahan' : 'Simpan Pengajuan'}
           </Button>
         </footer>
       </form>

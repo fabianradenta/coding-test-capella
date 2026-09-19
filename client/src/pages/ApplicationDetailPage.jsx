@@ -5,6 +5,7 @@ import { Button } from '../components/Button.jsx';
 import { Card } from '../components/Card.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { Toast } from '../components/Toast.jsx';
+import { ApplicationFormModal } from '../features/applications/ApplicationFormModal.jsx';
 import { CustomerHistoryTable } from '../features/applications/CustomerHistoryTable.jsx';
 import { DecisionDialog } from '../features/applications/DecisionDialog.jsx';
 import { useApplicationDetail } from '../features/applications/useApplicationDetail.js';
@@ -68,6 +69,7 @@ export function ApplicationDetailPage() {
   const { id } = useParams();
   const { data, error, isLoading, reload } = useApplicationDetail(id);
   const [decision, setDecision] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [toast, setToast] = useState(null);
 
   function closeDecision(outcome) {
@@ -143,6 +145,7 @@ export function ApplicationDetailPage() {
 
         {application.status === 'PENDING' ? (
           <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setIsEditing(true)}>Edit</Button>
             <Button variant="reject" onClick={() => setDecision('REJECTED')}>
               Tolak
             </Button>
@@ -238,6 +241,18 @@ export function ApplicationDetailPage() {
           />
         </Card>
       </div>
+
+      {isEditing ? (
+        <ApplicationFormModal
+          application={application}
+          onClose={() => setIsEditing(false)}
+          onSaved={(saved) => {
+            setIsEditing(false);
+            setToast(`Pengajuan ${saved.customerName} berhasil diperbarui`);
+            reload();
+          }}
+        />
+      ) : null}
 
       {decision ? (
         <DecisionDialog

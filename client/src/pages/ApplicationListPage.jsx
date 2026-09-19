@@ -148,14 +148,16 @@ export function ApplicationListPage() {
         ) : null}
       </div>
 
-      <ApplicationFormModal
-        open={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSaved={(application) => {
-          setToast(`Pengajuan ${application.customerName} berhasil dibuat`);
-          reload();
-        }}
-      />
+      {isFormOpen ? (
+        <ApplicationFormModal
+          onClose={() => setIsFormOpen(false)}
+          onSaved={(application) => {
+            setIsFormOpen(false);
+            setToast(`Pengajuan ${application.customerName} berhasil dibuat`);
+            reload();
+          }}
+        />
+      ) : null}
 
       {decisionTarget ? (
         <DecisionDialog
