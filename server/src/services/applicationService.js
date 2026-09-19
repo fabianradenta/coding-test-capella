@@ -1,5 +1,5 @@
 import { withTransaction } from '../db/pool.js';
-import { BusinessRuleError, NotFoundError } from '../errors.js';
+import { BusinessRuleError, ConflictError, NotFoundError } from '../errors.js';
 import * as applicationRepository from '../repositories/applicationRepository.js';
 import * as customerRepository from '../repositories/customerRepository.js';
 
@@ -140,4 +140,38 @@ export async function getApplicationDetail(id) {
     customerApplications,
     quota: { used, limit: QUOTA_LIMIT },
   };
+}
+
+export async function updateApplication(id, input) {
+  if (!UUID_PATTERN.test(id)) {
+    throw new NotFoundError('Pengajuan tidak ditemukan');
+  }
+
+  assertFinancingLimits(input);
+
+  return withTransaction(async (client) => {
+    // Locked so that a decision taken in parallel cannot slip in between the check and the update.
+    const existing = await applicationRepository.findByIdForUpdate(id, client);
+    if (!existing) {
+      throw new NotFoundError('Pengajuan tidak ditemukan');
+    }
+    if (existing.status !== 'PENDING') {
+      throw new ConflictError(
+        'Pengajuan yang sudah diputuskan tidak dapat diubah',
+      );
+    }
+
+    return applicationRepository.update(
+      id,
+      {
+        applicationType: input.applicationType,
+        requestedAmount: input.requestedAmount,
+        tenor: input.tenor,
+        monthlyIncome: input.monthlyIncome,
+        notes: input.notes,
+        monthlyPayment: Math.ceil(input.requestedAmount / input.tenor),
+      },
+      client,
+    );
+  });
 }

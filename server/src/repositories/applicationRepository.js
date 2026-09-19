@@ -115,6 +115,43 @@ export async function findByCustomerId(customerId, db = pool) {
   return rows.map(mapApplication);
 }
 
+export async function findByIdForUpdate(id, db = pool) {
+  const { rows } = await db.query(
+    'SELECT * FROM applications WHERE id = $1 FOR UPDATE',
+    [id],
+  );
+  return rows[0] ? mapApplication(rows[0]) : null;
+}
+
+export async function update(id, application, db = pool) {
+  const { rows } = await db.query(
+    `WITH updated AS (
+       UPDATE applications
+       SET application_type = $2,
+           requested_amount = $3,
+           tenor = $4,
+           monthly_income = $5,
+           notes = $6,
+           monthly_payment = $7
+       WHERE id = $1
+       RETURNING *
+     )
+     SELECT u.*, c.name AS customer_name, c.identity_number
+     FROM updated u
+     JOIN customers c ON c.id = u.customer_id`,
+    [
+      id,
+      application.applicationType,
+      application.requestedAmount,
+      application.tenor,
+      application.monthlyIncome,
+      application.notes,
+      application.monthlyPayment,
+    ],
+  );
+  return mapApplicationWithCustomer(rows[0]);
+}
+
 export async function countActiveByCustomerId(customerId, db = pool) {
   const { rows } = await db.query(
     `SELECT count(*)::int AS count
