@@ -93,6 +93,28 @@ export async function countByStatus({ search, type } = {}, db = pool) {
   };
 }
 
+export async function findById(id, db = pool) {
+  const { rows } = await db.query(
+    `SELECT a.*, c.name AS customer_name, c.identity_number
+     FROM applications a
+     JOIN customers c ON c.id = a.customer_id
+     WHERE a.id = $1`,
+    [id],
+  );
+  return rows[0] ? mapApplicationWithCustomer(rows[0]) : null;
+}
+
+export async function findByCustomerId(customerId, db = pool) {
+  const { rows } = await db.query(
+    `SELECT *
+     FROM applications
+     WHERE customer_id = $1
+     ORDER BY submitted_at DESC, id DESC`,
+    [customerId],
+  );
+  return rows.map(mapApplication);
+}
+
 export async function countActiveByCustomerId(customerId, db = pool) {
   const { rows } = await db.query(
     `SELECT count(*)::int AS count

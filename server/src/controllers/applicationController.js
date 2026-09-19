@@ -15,3 +15,8 @@ export async function listApplications(req, res) {
   const result = await applicationService.listApplications(filters);
   res.json(result);
 }
+
+export async function getApplication(req, res) {
+  const detail = await applicationService.getApplicationDetail(req.params.id);
+  res.json(detail);
+}

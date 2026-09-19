@@ -1,9 +1,15 @@
 import { withTransaction } from '../db/pool.js';
-import { BusinessRuleError } from '../errors.js';
+import { BusinessRuleError, NotFoundError } from '../errors.js';
 import * as applicationRepository from '../repositories/applicationRepository.js';
 import * as customerRepository from '../repositories/customerRepository.js';
 
 export const QUOTA_LIMIT = 3;
+
+const ACTIVE_STATUSES = ['PENDING', 'APPROVED'];
+// An id that is not a UUID would make Postgres raise a type error, but to a user it is
+// simply an application that does not exist.
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const MIN_MONTHLY_INCOME = 1_000_000;
 const MAX_REQUESTED_AMOUNT = 200_000_000;
@@ -105,4 +111,33 @@ export async function listApplications(filters) {
   ]);
 
   return { items, counts };
+}
+
+export async function getApplicationDetail(id) {
+  if (!UUID_PATTERN.test(id)) {
+    throw new NotFoundError('Pengajuan tidak ditemukan');
+  }
+
+  const application = await applicationRepository.findById(id);
+  if (!application) {
+    throw new NotFoundError('Pengajuan tidak ditemukan');
+  }
+
+  const customerApplications = await applicationRepository.findByCustomerId(
+    application.customerId,
+  );
+  const used = customerApplications.filter((item) =>
+    ACTIVE_STATUSES.includes(item.status),
+  ).length;
+
+  return {
+    application,
+    customer: {
+      id: application.customerId,
+      name: application.customerName,
+      identityNumber: application.identityNumber,
+    },
+    customerApplications,
+    quota: { used, limit: QUOTA_LIMIT },
+  };
 }
