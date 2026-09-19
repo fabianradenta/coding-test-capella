@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createApplication } from '../../api/applications.js';
+import { getCustomer } from '../../api/customers.js';
 import { Alert } from '../../components/Alert.jsx';
 import { Button } from '../../components/Button.jsx';
 import { FormField, inputClassName } from '../../components/FormField.jsx';
@@ -9,6 +10,7 @@ import {
   formatCurrency,
   formatNumber,
 } from '../../utils/format.js';
+import { CustomerQuotaNotice } from './CustomerQuotaNotice.jsx';
 import {
   checkBusinessRules,
   digitsOnly,
@@ -16,6 +18,8 @@ import {
   toNumber,
   validateFields,
 } from './applicationRules.js';
+
+const IDENTITY_LENGTH = 16;
 
 const EMPTY_VALUES = {
   identityNumber: '',
@@ -32,6 +36,51 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [ruleError, setRuleError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [lookup, setLookup] = useState({ state: 'idle' });
+
+  const { identityNumber } = values;
+
+  useEffect(() => {
+    if (identityNumber.length !== IDENTITY_LENGTH) {
+      setLookup({ state: 'idle' });
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setLookup({ state: 'loading' });
+
+    getCustomer(identityNumber, { signal: controller.signal })
+      .then((customer) => {
+        setLookup({ state: 'found', customer });
+        setValues((current) => ({ ...current, name: customer.name }));
+        setFieldErrors((current) => ({ ...current, name: undefined }));
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') {
+          return;
+        }
+        // Anything other than "not registered yet" still lets the form be submitted;
+        // the server checks the customer again anyway.
+        setLookup(
+          err.status === 404
+            ? { state: 'new' }
+            : { state: 'error', message: err.message },
+        );
+      });
+
+    return () => controller.abort();
+  }, [identityNumber]);
+
+  function setIdentityNumber(value) {
+    setValues((current) => ({
+      ...current,
+      identityNumber: value,
+      // A name that came from a lookup must not survive a change of identity number.
+      name: lookup.state === 'found' ? '' : current.name,
+    }));
+    setFieldErrors((current) => ({ ...current, identityNumber: undefined }));
+    setRuleError(null);
+  }
 
   function setField(name, value) {
     setValues((current) => ({ ...current, [name]: value }));
@@ -43,11 +92,16 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
     setValues(EMPTY_VALUES);
     setFieldErrors({});
     setRuleError(null);
+    setLookup({ state: 'idle' });
     onClose();
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    if (isQuotaFull) {
+      return;
+    }
 
     const errors = validateFields(values);
     if (Object.keys(errors).length > 0) {
@@ -83,6 +137,14 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
       setIsSaving(false);
     }
   }
+
+  const existingCustomer = lookup.state === 'found' ? lookup.customer : null;
+  const identityHint = {
+    loading: 'Mengecek data nasabah…',
+    new: 'Belum terdaftar, nasabah baru akan dibuat.',
+    error: 'Gagal mengecek data nasabah, isi nama secara manual.',
+  }[lookup.state];
+  const isQuotaFull = existingCustomer?.quota.remaining === 0;
 
   const monthlyPayment = monthlyPaymentOf(
     toNumber(values.requestedAmount),
@@ -129,7 +191,16 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
         </header>
 
         <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 py-5">
-          {ruleError ? (
+          {isQuotaFull ? (
+            <Alert title="Nasabah telah mencapai batas maksimal 3 pengajuan">
+              <p>
+                Selesaikan atau tolak salah satu pengajuan yang masih berjalan
+                sebelum menambah pengajuan baru.
+              </p>
+            </Alert>
+          ) : null}
+
+          {ruleError && !isQuotaFull ? (
             <Alert title={ruleError.message}>
               {ruleError.detail ? <p>{ruleError.detail}</p> : null}
             </Alert>
@@ -144,6 +215,7 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
                 label="Nomor identitas"
                 htmlFor="identityNumber"
                 error={fieldErrors.identityNumber}
+                hint={identityHint}
               >
                 <input
                   id="identityNumber"
@@ -151,9 +223,8 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
                   autoComplete="off"
                   value={values.identityNumber}
                   onChange={(event) =>
-                    setField(
-                      'identityNumber',
-                      digitsOnly(event.target.value, 16),
+                    setIdentityNumber(
+                      digitsOnly(event.target.value, IDENTITY_LENGTH),
                     )
                   }
                   aria-invalid={Boolean(fieldErrors.identityNumber)}
@@ -178,12 +249,22 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
                   id="name"
                   value={values.name}
                   onChange={(event) => setField('name', event.target.value)}
+                  readOnly={Boolean(existingCustomer)}
                   aria-invalid={Boolean(fieldErrors.name)}
                   aria-describedby={fieldErrors.name ? 'name-error' : undefined}
-                  className={inputClassName(Boolean(fieldErrors.name))}
+                  className={inputClassName(
+                    Boolean(fieldErrors.name),
+                    existingCustomer
+                      ? 'bg-slate-100 text-slate-600'
+                      : undefined,
+                  )}
                 />
               </FormField>
             </div>
+
+            {existingCustomer ? (
+              <CustomerQuotaNotice customer={existingCustomer} />
+            ) : null}
           </section>
 
           <section className="space-y-4">
@@ -361,7 +442,12 @@ export function ApplicationFormModal({ open, onClose, onSaved }) {
           <Button onClick={close} disabled={isSaving}>
             Batal
           </Button>
-          <Button type="submit" variant="primary" loading={isSaving}>
+          <Button
+            type="submit"
+            variant="primary"
+            loading={isSaving}
+            disabled={isQuotaFull}
+          >
             Simpan Pengajuan
           </Button>
         </footer>
