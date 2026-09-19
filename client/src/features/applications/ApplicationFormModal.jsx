@@ -194,7 +194,7 @@ export function ApplicationFormModal({ application = null, onClose, onSaved }) {
             type="button"
             onClick={onClose}
             aria-label="Tutup form"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800"
+            className="-m-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800"
           >
             <svg
               className="h-5 w-5"

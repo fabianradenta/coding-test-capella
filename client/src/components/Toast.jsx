@@ -9,10 +9,10 @@ export function Toast({ message, onClose }) {
   }, [message, onClose]);
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4">
+    <div className="pointer-events-none fixed inset-x-0 top-20 z-50 flex justify-center px-4">
       <div
         role="status"
-        className="pointer-events-auto flex items-center gap-3 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-900 shadow-lg"
+        className="pointer-events-auto flex max-w-full items-center gap-3 rounded-lg border border-green-300 bg-green-50 py-2 pr-2 pl-4 text-sm text-green-900 shadow-lg"
       >
         <svg
           className="h-5 w-5 shrink-0 text-green-700"
@@ -31,7 +31,7 @@ export function Toast({ message, onClose }) {
           type="button"
           onClick={onClose}
           aria-label="Tutup notifikasi"
-          className="ml-1 flex h-6 w-6 items-center justify-center rounded text-green-800 hover:bg-green-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-green-800 hover:bg-green-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
         >
           <svg
             className="h-4 w-4"

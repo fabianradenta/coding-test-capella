@@ -20,7 +20,7 @@ function BackLink() {
   return (
     <Link
       to="/"
-      className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-800 hover:underline"
+      className="inline-flex h-11 items-center gap-1.5 text-sm font-medium text-blue-800 hover:underline"
     >
       <svg
         className="h-4 w-4"
@@ -49,7 +49,7 @@ function DetailRow({ label, children }) {
 function PaymentBox({ label, value, highlighted = false }) {
   return (
     <div
-      className={`flex-1 rounded-lg border p-4 ${
+      className={`min-w-[11rem] flex-1 rounded-lg border p-4 ${
         highlighted
           ? 'border-blue-200 bg-blue-50 text-blue-900'
           : 'border-slate-200 bg-white text-slate-900'
@@ -156,7 +156,7 @@ export function ApplicationDetailPage() {
         ) : null}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card title="Informasi Nasabah">
           <dl className="divide-y divide-slate-100">
             <DetailRow label="Nama lengkap">{customer.name}</DetailRow>
