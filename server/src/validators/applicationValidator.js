@@ -34,6 +34,14 @@ const notes = z
   .trim()
   .min(1, 'Catatan wajib diisi');
 
+const applicationFiltersSchema = z.object({
+  search: z.string().optional(),
+  status: z
+    .enum(['PENDING', 'APPROVED', 'REJECTED'], { error: 'Status tidak valid' })
+    .optional(),
+  type: applicationType.optional(),
+});
+
 const createApplicationSchema = z.object({
   identityNumber,
   name,
@@ -73,4 +81,15 @@ export function parseCreateApplication(body) {
 
 export function parseUpdateApplication(body) {
   return parse(updateApplicationSchema, body);
+}
+
+export function parseApplicationFilters(query) {
+  const provided = {};
+  for (const key of ['search', 'status', 'type']) {
+    const value = query[key];
+    if (typeof value === 'string' && value.trim() !== '') {
+      provided[key] = value.trim();
+    }
+  }
+  return parse(applicationFiltersSchema, provided);
 }

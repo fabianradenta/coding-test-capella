@@ -1,8 +1,17 @@
 import * as applicationService from '../services/applicationService.js';
-import { parseCreateApplication } from '../validators/applicationValidator.js';
+import {
+  parseApplicationFilters,
+  parseCreateApplication,
+} from '../validators/applicationValidator.js';
 
 export async function createApplication(req, res) {
   const input = parseCreateApplication(req.body);
   const application = await applicationService.createApplication(input);
   res.status(201).json(application);
+}
+
+export async function listApplications(req, res) {
+  const filters = parseApplicationFilters(req.query);
+  const result = await applicationService.listApplications(filters);
+  res.json(result);
 }

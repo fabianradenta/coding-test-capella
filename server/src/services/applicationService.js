@@ -97,3 +97,12 @@ export async function createApplication(input) {
     };
   });
 }
+
+export async function listApplications(filters) {
+  const [items, counts] = await Promise.all([
+    applicationRepository.findAll(filters),
+    applicationRepository.countByStatus(filters),
+  ]);
+
+  return { items, counts };
+}
