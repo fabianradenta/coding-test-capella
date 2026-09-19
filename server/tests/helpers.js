@@ -23,3 +23,10 @@ export async function setStatus(id, status) {
     id,
   ]);
 }
+
+export async function setSubmittedAt(id, submittedAt) {
+  await pool.query('UPDATE applications SET submitted_at = $1 WHERE id = $2', [
+    submittedAt,
+    id,
+  ]);
+}
