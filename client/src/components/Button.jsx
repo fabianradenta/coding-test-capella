@@ -39,6 +39,10 @@ function Spinner() {
   );
 }
 
+export function buttonClassName(variant = 'secondary', className = '') {
+  return `inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${VARIANTS[variant]} ${className}`;
+}
+
 export function Button({
   variant = 'secondary',
   loading = false,
@@ -51,7 +55,7 @@ export function Button({
     <button
       type="button"
       disabled={disabled || loading}
-      className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${VARIANTS[variant]} ${className}`}
+      className={buttonClassName(variant, className)}
       {...props}
     >
       {loading ? <Spinner /> : null}
