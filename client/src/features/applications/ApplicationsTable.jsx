@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { buttonClassName } from '../../components/Button.jsx';
+import { Button, buttonClassName } from '../../components/Button.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import {
   APPLICATION_TYPE_LABELS,
@@ -11,7 +11,7 @@ const HEADER_CLASS =
   'px-4 py-3 text-xs font-medium tracking-wide text-slate-500 uppercase';
 const CELL_CLASS = 'px-4 py-3 text-sm text-slate-700';
 
-export function ApplicationsTable({ items }) {
+export function ApplicationsTable({ items, onDecide }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[56rem] border-collapse">
@@ -76,12 +76,30 @@ export function ApplicationsTable({ items }) {
                 <StatusBadge status={application.status} />
               </td>
               <td className={CELL_CLASS}>
-                <Link
-                  to={`/applications/${application.id}`}
-                  className={buttonClassName('secondary')}
-                >
-                  Detail
-                </Link>
+                <div className="flex gap-2">
+                  {application.status === 'PENDING' ? (
+                    <>
+                      <Button
+                        variant="approve"
+                        onClick={() => onDecide(application, 'APPROVED')}
+                      >
+                        Setujui
+                      </Button>
+                      <Button
+                        variant="reject"
+                        onClick={() => onDecide(application, 'REJECTED')}
+                      >
+                        Tolak
+                      </Button>
+                    </>
+                  ) : null}
+                  <Link
+                    to={`/applications/${application.id}`}
+                    className={buttonClassName('secondary')}
+                  >
+                    Detail
+                  </Link>
+                </div>
               </td>
             </tr>
           ))}

@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Alert } from '../components/Alert.jsx';
 import { Button } from '../components/Button.jsx';
 import { Card } from '../components/Card.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
+import { Toast } from '../components/Toast.jsx';
 import { CustomerHistoryTable } from '../features/applications/CustomerHistoryTable.jsx';
+import { DecisionDialog } from '../features/applications/DecisionDialog.jsx';
 import { useApplicationDetail } from '../features/applications/useApplicationDetail.js';
 import {
   APPLICATION_TYPE_LABELS,
@@ -64,6 +67,22 @@ function PaymentBox({ label, value, highlighted = false }) {
 export function ApplicationDetailPage() {
   const { id } = useParams();
   const { data, error, isLoading, reload } = useApplicationDetail(id);
+  const [decision, setDecision] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  function closeDecision(outcome) {
+    if (outcome === 'decided') {
+      setToast(
+        `Pengajuan ${data.customer.name} berhasil ${
+          decision === 'APPROVED' ? 'disetujui' : 'ditolak'
+        }`,
+      );
+    }
+    if (outcome !== 'cancelled') {
+      reload();
+    }
+    setDecision(null);
+  }
 
   if (isLoading && !data) {
     return (
@@ -108,15 +127,30 @@ export function ApplicationDetailPage() {
     <div>
       <BackLink />
 
-      <div className="mt-4 mb-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold text-slate-900">{customer.name}</h1>
-          <StatusBadge status={application.status} />
+      <div className="mt-4 mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-900">
+              {customer.name}
+            </h1>
+            <StatusBadge status={application.status} />
+          </div>
+          <p className="mt-1 text-sm text-slate-600">
+            Pengajuan {APPLICATION_TYPE_LABELS[application.applicationType]},
+            diajukan {formatDateTime(application.submittedAt)}
+          </p>
         </div>
-        <p className="mt-1 text-sm text-slate-600">
-          Pengajuan {APPLICATION_TYPE_LABELS[application.applicationType]},
-          diajukan {formatDateTime(application.submittedAt)}
-        </p>
+
+        {application.status === 'PENDING' ? (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="reject" onClick={() => setDecision('REJECTED')}>
+              Tolak
+            </Button>
+            <Button variant="approve" onClick={() => setDecision('APPROVED')}>
+              Setujui
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -204,6 +238,16 @@ export function ApplicationDetailPage() {
           />
         </Card>
       </div>
+
+      {decision ? (
+        <DecisionDialog
+          application={application}
+          decision={decision}
+          onClose={closeDecision}
+        />
+      ) : null}
+
+      {toast ? <Toast message={toast} onClose={() => setToast(null)} /> : null}
     </div>
   );
 }

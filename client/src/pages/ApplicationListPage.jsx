@@ -4,6 +4,7 @@ import { Alert } from '../components/Alert.jsx';
 import { Button } from '../components/Button.jsx';
 import { Toast } from '../components/Toast.jsx';
 import { ApplicationFormModal } from '../features/applications/ApplicationFormModal.jsx';
+import { DecisionDialog } from '../features/applications/DecisionDialog.jsx';
 import { ApplicationFilters } from '../features/applications/ApplicationFilters.jsx';
 import { ApplicationsTable } from '../features/applications/ApplicationsTable.jsx';
 import { useApplications } from '../features/applications/useApplications.js';
@@ -22,6 +23,22 @@ export function ApplicationListPage() {
   const { data, error, isLoading, reload } = useApplications(filters);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const [decisionTarget, setDecisionTarget] = useState(null);
+
+  function closeDecision(outcome) {
+    if (outcome === 'decided') {
+      const { application, decision } = decisionTarget;
+      setToast(
+        `Pengajuan ${application.customerName} berhasil ${
+          decision === 'APPROVED' ? 'disetujui' : 'ditolak'
+        }`,
+      );
+    }
+    if (outcome !== 'cancelled') {
+      reload();
+    }
+    setDecisionTarget(null);
+  }
 
   // Filters live in the URL so that going to a detail page and back keeps them.
   const changeFilter = useCallback(
@@ -90,7 +107,12 @@ export function ApplicationListPage() {
         {!error && data ? (
           <div className={isLoading ? 'opacity-60' : undefined}>
             {items.length > 0 ? (
-              <ApplicationsTable items={items} />
+              <ApplicationsTable
+                items={items}
+                onDecide={(application, decision) =>
+                  setDecisionTarget({ application, decision })
+                }
+              />
             ) : (
               <div className="p-8 text-center">
                 <p className="text-sm font-medium text-slate-900">
@@ -134,6 +156,14 @@ export function ApplicationListPage() {
           reload();
         }}
       />
+
+      {decisionTarget ? (
+        <DecisionDialog
+          application={decisionTarget.application}
+          decision={decisionTarget.decision}
+          onClose={closeDecision}
+        />
+      ) : null}
 
       {toast ? <Toast message={toast} onClose={() => setToast(null)} /> : null}
     </div>
